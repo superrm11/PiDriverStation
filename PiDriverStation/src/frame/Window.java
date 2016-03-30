@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
-import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -22,7 +21,6 @@ import hardware.Devices;
 import net.java.games.input.Component;
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;
-import javax.swing.JTextPane;
 
 /**
  * 
@@ -35,7 +33,7 @@ public class Window extends JFrame {
 	private static JMenu mnDevice;
 	private JPanel contentPane;
 	private static JRadioButtonMenuItem showAllControllers;
-	private static JRadioButtonMenuItem showComponentLists;
+	private static JRadioButtonMenuItem showComponentList;
 	private static JMenuItem mntmMinimize;
 	private static JMenuItem mntmMaximize;
 	private static JMenuItem mntmExit;
@@ -52,15 +50,20 @@ public class Window extends JFrame {
 	
 	private static String deviceSelected;
 	private static int deviceSelectedIndex;
+	private static int displayComponentNum = 0;
 	private static ArrayList<Component> addedAxisComponents = new ArrayList<Component>();
 	private static ArrayList<Component> addedButtonComponents = new ArrayList<Component>();
+	private static ArrayList<String> addedDevices = new ArrayList<String>();
 
 	
 	private enum windowState{
 		MINIMIZE, MAXIMIZE
 	}
 	private enum controllerTypes{
-		LIMITED, ALL
+		LIMITED, ALL, NON_DISPLAY
+	}
+	private enum state{
+		ENABLED, DISABLED
 	}
 
 
@@ -76,6 +79,7 @@ public class Window extends JFrame {
 					frame_minimized.setVisible(true);
 					mntmMaximize.setVisible(true);
 					mntmMinimize.setVisible(false);
+					
 					beginListeners();
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -84,6 +88,7 @@ public class Window extends JFrame {
 		});
 		Thread.sleep(500);
 		refreshDeviceList(controllerTypes.LIMITED);
+		displayComponents();
 	}
 
 	/**
@@ -140,8 +145,8 @@ public class Window extends JFrame {
 			mntmMaximize = new JMenuItem("Maximize");
 			mnView.add(mntmMaximize);
 			
-			showComponentLists = new JRadioButtonMenuItem("Show Component List");
-			mnView.add(showComponentLists);
+			showComponentList = new JRadioButtonMenuItem("Show Component List");
+			mnView.add(showComponentList);
 			
 			
 			//-------------------------------SETUP TAB------------------------------------
@@ -182,31 +187,21 @@ public class Window extends JFrame {
 			componentPanel.setBounds(173, 0, 259, 227);
 			contentPane.add(componentPanel);
 			componentPanel.setLayout(null);
+			componentPanel.setVisible(false);
 			
 			componentList = new TextArea();
 			componentList.setBounds(0, 0, 259, 227);
 			componentPanel.add(componentList);
 			componentList.setEditable(false);
+			componentList.setFocusable(false);
 			
 	}
 	
-	
+/*
+ * Begins Action Listeners for the components of the frame.
+ */
 public static void beginListeners(){
 		
-		//---------Minimize/Maximize Buttons--------------------------------------
-		
-		mntmMaximize.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent arg0) {
-				setWindow(windowState.MAXIMIZE);
-			}
-		});
-		
-		mntmMinimize.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent arg0) {
-				setWindow(windowState.MINIMIZE);
-			}
-			
-		});
 		
 		//-------------------Add>Show All Controllers Radio Button----------------
 		
@@ -236,9 +231,9 @@ public static void beginListeners(){
 		btnAddAsButton.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				addedButtonComponents.add(Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()]);
-				addItemPanel(false);
+				addItemPanel(state.DISABLED);
+				addedDevices.add(deviceSelected);
 				displayComponents();
-				
 			}
 			
 		});
@@ -246,11 +241,36 @@ public static void beginListeners(){
 		btnAddAsAxis.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				addedAxisComponents.add(Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()]);
-				addItemPanel(false);
+				addItemPanel(state.DISABLED);
+				addedDevices.add(deviceSelected);
 				displayComponents();
 			}
 			
 		});
+		//-----------------------View Tab----------------------------------------
+		mntmMaximize.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				setWindow(windowState.MAXIMIZE);
+			}
+		});
+		
+		mntmMinimize.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				setWindow(windowState.MINIMIZE);
+			}
+			
+		});
+		
+		showComponentList.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0){
+				if(showComponentList.isSelected()){
+					componentPanel.setVisible(true);
+				}else{
+					componentPanel.setVisible(false);
+				}
+			}
+		});
+		
 	}
 	
 	
@@ -273,6 +293,7 @@ public static void beginListeners(){
 			mntmMaximize.setVisible(true);
 			mntmMinimize.setVisible(false);
 			
+			displayComponents();
 			beginListeners();
 			break;
 		case MAXIMIZE:
@@ -287,13 +308,22 @@ public static void beginListeners(){
 			mntmMaximize.setVisible(false);
 			mntmMinimize.setVisible(true);
 			
+			displayComponents();
 			beginListeners();
 			break;
 		}
 	}
-		 static void addItemPanel(boolean state){
-		refreshDeviceList(controllerTypes.ALL);
-		if(state == true){
+		
+		/**
+		 * Creates the panel that allows the user to add a button or axis
+		 * @param s describes whether the frame is being enabled or disabled
+		 */
+		static void addItemPanel(state s){
+		refreshDeviceList(controllerTypes.NON_DISPLAY);
+		
+		switch(s){
+		case ENABLED:
+			
 			panel.setVisible(true);
 			
 			//get index of device selected
@@ -313,16 +343,19 @@ public static void beginListeners(){
 			for(int i = 0; i < Devices.com[deviceSelectedIndex].length; i++){
 				comboBox.addItem(Devices.com[deviceSelectedIndex][i].getName());
 			} 
+			break;
 			
+		case DISABLED:
 			
-			
-		}else{
 			panel.setVisible(false);
+			break;
 			
-		 
 		}
+		
 	}
-	
+	/*
+	 * Refreshes the list of devices under Add > Device
+	 */
 	public static void refreshDeviceList(controllerTypes r){
 
 		
@@ -345,7 +378,7 @@ public static void beginListeners(){
 					controller.addActionListener(new ActionListener(){
 						public void actionPerformed(ActionEvent arg0) {
 							deviceSelected = controller.getText();
-							addItemPanel(true);
+							addItemPanel(state.ENABLED);
 						}
 					});
 				}
@@ -360,21 +393,35 @@ public static void beginListeners(){
 				controller.addActionListener(new ActionListener(){
 					public void actionPerformed(ActionEvent arg0) {
 						deviceSelected = controller.getText();
-						addItemPanel(true);
+						addItemPanel(state.ENABLED);
 					}
 				});
+			}
+			break;
+			
+		case NON_DISPLAY:
+			for(int i = 0; i < Devices.con.length; i++){
+				Devices.com[i] = Devices.con[i].getComponents();
 			}
 			break;
 		}
 	}
 	
-
+	/*
+	 * Creates the TextArea that displays the axis and buttons added and sorts them at the same time.
+	 */
 	public static void displayComponents(){
 		componentList.setText("");
 		componentList.append("    Axis:\n");
+		displayComponentNum = 0;
 		for(int i = 0; i < addedAxisComponents.size(); i++){
-			//HELP TODO I don't know how to get the Controller[] that the component came from from the array list.
+			componentList.append(displayComponentNum + "   " + addedDevices.get(i) + "\n" + "    > " + addedAxisComponents.get(i).getName() + "\n");
+			displayComponentNum++;
 		}
-		
+		componentList.append("    Buttons:\n");
+		for(int i = 0; i < addedButtonComponents.size(); i++){
+			componentList.append(displayComponentNum + "   " + addedDevices.get(i) + "\n" + "    > " + addedButtonComponents.get(i).getName() + "\n");
+			displayComponentNum++;
+		}
 	}
 }
