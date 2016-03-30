@@ -2,6 +2,7 @@ package frame;
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Frame;
+import java.awt.TextArea;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ import hardware.Devices;
 import net.java.games.input.Component;
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;
+import javax.swing.JTextPane;
 
 /**
  * 
@@ -39,8 +41,8 @@ public class Window extends JFrame {
 	private static JMenuItem mntmExit;
 	private static JButton btnAddAsButton;
 	private static JButton btnAddAsAxis;
-	private static JList<String> buttonList;
-	private static JList<String> axisList;
+	private static JPanel componentPanel;
+	private static TextArea componentList;
 	
 	private static Window frame_minimized;
 	private static Window frame_maximized;
@@ -52,6 +54,7 @@ public class Window extends JFrame {
 	private static int deviceSelectedIndex;
 	private static ArrayList<Component> addedAxisComponents = new ArrayList<Component>();
 	private static ArrayList<Component> addedButtonComponents = new ArrayList<Component>();
+
 	
 	private enum windowState{
 		MINIMIZE, MAXIMIZE
@@ -174,20 +177,16 @@ public class Window extends JFrame {
 			
 			//-----------------------------Component Listing Panel-------------------------
 			
-			JPanel componentPanel = new JPanel();
+			componentPanel = new JPanel();
 			componentPanel.setBackground(Color.LIGHT_GRAY);
 			componentPanel.setBounds(173, 0, 259, 227);
 			contentPane.add(componentPanel);
 			componentPanel.setLayout(null);
 			
-			buttonList = new JList<String>();
-			buttonList.setBounds(12, 13, 116, 201);
-			componentPanel.add(buttonList);
-			
-			axisList = new JList<String>();
-			axisList.setBounds(129, 13, 118, 201);
-			componentPanel.add(axisList);
-			
+			componentList = new TextArea();
+			componentList.setBounds(0, 0, 259, 227);
+			componentPanel.add(componentList);
+			componentList.setEditable(false);
 			
 	}
 	
@@ -238,7 +237,7 @@ public static void beginListeners(){
 			public void actionPerformed(ActionEvent arg0) {
 				addedButtonComponents.add(Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()]);
 				addItemPanel(false);
-				
+				displayComponents();
 				
 			}
 			
@@ -248,7 +247,7 @@ public static void beginListeners(){
 			public void actionPerformed(ActionEvent arg0) {
 				addedAxisComponents.add(Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()]);
 				addItemPanel(false);
-				
+				displayComponents();
 			}
 			
 		});
@@ -367,5 +366,15 @@ public static void beginListeners(){
 			}
 			break;
 		}
+	}
+	
+
+	public static void displayComponents(){
+		componentList.setText("");
+		componentList.append("    Axis:\n");
+		for(int i = 0; i < addedAxisComponents.size(); i++){
+			//HELP TODO I don't know how to get the Controller[] that the component came from from the array list.
+		}
+		
 	}
 }
