@@ -5,10 +5,16 @@ import java.awt.Frame;
 import java.awt.TextArea;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -16,6 +22,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import hardware.Devices;
 import net.java.games.input.Component;
@@ -31,35 +38,45 @@ public class Window extends JFrame {
 
 	private static JMenu mnAdd;
 	private static JMenu mnDevice;
-	private JPanel contentPane;
+	private static JPanel contentPane;
+	private static JPanel componentPanel;
+	private static JPanel panel;
 	private static JRadioButtonMenuItem showAllControllers;
 	private static JRadioButtonMenuItem showComponentList;
 	private static JMenuItem mntmMinimize;
 	private static JMenuItem mntmMaximize;
 	private static JMenuItem mntmExit;
+	private static JMenuItem mntmOpen;
+	private static JMenuItem mntmSave;
+	private static JMenuItem mntmSaveAs;
 	private static JButton btnAddAsButton;
 	private static JButton btnAddAsAxis;
-	private static JPanel componentPanel;
+	private static JButton cancelAddItem;
 	private static TextArea componentList;
-	
+	private static JComboBox<String> comboBox;
+		
 	private static Window frame_minimized;
 	private static Window frame_maximized;
 		
-	private static JPanel panel;
-	private static JComboBox<String> comboBox;
+	private static FileOutputStream fis;
+	private static ObjectOutputStream oos;
 	
 	private static String deviceSelected;
+	private static String saveName;
 	private static int deviceSelectedIndex;
 	private static int displayComponentNum = 0;
 	private static ArrayList<Component> addedAxisComponents = new ArrayList<Component>();
 	private static ArrayList<Component> addedButtonComponents = new ArrayList<Component>();
 	private static ArrayList<String> addedDevices = new ArrayList<String>();
+	//TODO add all arraylists to a single array for input/outputStream
+	private static Object[] saveArrayLists = new Object[3];
+	
 
 	
 	private enum windowState{
 		MINIMIZE, MAXIMIZE
 	}
-	private enum controllerTypes{
+	private enum controllerType{
 		LIMITED, ALL, NON_DISPLAY
 	}
 	private enum state{
@@ -87,7 +104,7 @@ public class Window extends JFrame {
 			}
 		});
 		Thread.sleep(500);
-		refreshDeviceList(controllerTypes.LIMITED);
+		refreshDeviceList(controllerType.LIMITED);
 		displayComponents();
 	}
 
@@ -108,13 +125,15 @@ public class Window extends JFrame {
 			JMenu mnFile = new JMenu("File");
 			menuBar.add(mnFile);
 			//TODO create file that can be loaded with different channels and devices
-			JMenuItem mntmSave = new JMenuItem("Save");
-			mnFile.add(mntmSave);
 			
-			JMenuItem mntmSaveAs = new JMenuItem("Save As");
+			mntmSave = new JMenuItem("Save");
+			mnFile.add(mntmSave);
+			mntmSave.setEnabled(false);
+			
+			mntmSaveAs = new JMenuItem("Save As");
 			mnFile.add(mntmSaveAs);
 			
-			JMenuItem mntmOpen = new JMenuItem("Open");
+			mntmOpen = new JMenuItem("Open");
 			mnFile.add(mntmOpen);
 			
 			mntmExit = new JMenuItem("Exit");
@@ -149,6 +168,9 @@ public class Window extends JFrame {
 			mnView.add(showComponentList);
 			
 			
+			
+			
+			
 			//-------------------------------SETUP TAB------------------------------------
 			
 			//TODO add preferences like customization(color and stuff) and wireless settings
@@ -166,7 +188,7 @@ public class Window extends JFrame {
 			comboBox.setBounds(0, 0, 139, 22);
 			panel = new JPanel();
 			panel.setBackground(Color.GRAY);
-			panel.setBounds(0, 0, 139, 88);
+			panel.setBounds(0, 0, 139, 118);
 			contentPane.add(panel);
 			panel.setLayout(null);
 			panel.setVisible(false);
@@ -179,6 +201,14 @@ public class Window extends JFrame {
 			btnAddAsAxis = new JButton("Add As Axis");
 			btnAddAsAxis.setBounds(0, 50, 127, 25);
 			panel.add(btnAddAsAxis);
+			
+			cancelAddItem = new JButton("Cancel");
+			cancelAddItem.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent arg0) {
+				}
+			});
+			cancelAddItem.setBounds(50, 80, 77, 25);
+			panel.add(cancelAddItem);
 			
 			//-----------------------------Component Listing Panel-------------------------
 			
@@ -198,9 +228,9 @@ public class Window extends JFrame {
 	}
 	
 /*
- * Begins Action Listeners for the components of the frame.
+ 	* Begins Action Listeners for the components of the frame.
  */
-public static void beginListeners(){
+	public static void beginListeners(){
 		
 		
 		//-------------------Add>Show All Controllers Radio Button----------------
@@ -209,19 +239,73 @@ public static void beginListeners(){
 			public void actionPerformed(ActionEvent arg0) {
 				mnAdd.doClick();
 				if(showAllControllers.isSelected()){
-					refreshDeviceList(controllerTypes.ALL);
+					refreshDeviceList(controllerType.ALL);
 				}else{
-					refreshDeviceList(controllerTypes.LIMITED);
+					refreshDeviceList(controllerType.LIMITED);
 				}
 			}
 			
 		});
 		
-		//--------------------File>Exit Button------------------------------------
+		//--------------------File Buttons----------------------------------------
 		
 		mntmExit.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				System.exit(1);
+				
+			}
+			
+		});
+		
+		mntmOpen.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				JFileChooser fileChooser = new JFileChooser();
+				
+				int rVal = fileChooser.showOpenDialog(fileChooser);
+				
+			}
+		});
+		
+		mntmSave.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0){
+				
+			}
+		});
+		 mntmSaveAs.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				JFileChooser fileChooser = new JFileChooser();
+				FileNameExtensionFilter filter = new FileNameExtensionFilter("Configuration Files", "cfg");
+				fileChooser.setFileFilter(filter);
+				
+				
+				int rVal = fileChooser.showSaveDialog(fileChooser);
+				if(rVal == JFileChooser.APPROVE_OPTION){
+					mntmSave.setEnabled(true);
+					saveName = fileChooser.getSelectedFile().getAbsolutePath();
+					System.out.println(saveName);
+					try {
+						fis = new FileOutputStream(saveName);
+					} catch (FileNotFoundException e) {
+						System.out.println("File Not Found!");
+					}
+					try {
+						oos = new ObjectOutputStream(fis);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					saveArrayLists[0] = addedAxisComponents;
+					saveArrayLists[1] = addedButtonComponents;
+					saveArrayLists[2] = addedDevices;
+					
+					try {
+						oos.writeObject(saveArrayLists);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+					
+				}
 				
 			}
 			
@@ -247,16 +331,24 @@ public static void beginListeners(){
 			}
 			
 		});
+		
+		cancelAddItem.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0){
+				addItemPanel(state.DISABLED);
+			}
+		});
 		//-----------------------View Tab----------------------------------------
 		mntmMaximize.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				setWindow(windowState.MAXIMIZE);
+				refreshDeviceList(controllerType.LIMITED);
 			}
 		});
 		
 		mntmMinimize.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				setWindow(windowState.MINIMIZE);
+				refreshDeviceList(controllerType.LIMITED);
 			}
 			
 		});
@@ -319,44 +411,49 @@ public static void beginListeners(){
 		 * @param s describes whether the frame is being enabled or disabled
 		 */
 		static void addItemPanel(state s){
-		refreshDeviceList(controllerTypes.NON_DISPLAY);
+			refreshDeviceList(controllerType.NON_DISPLAY);
 		
-		switch(s){
-		case ENABLED:
+			switch(s){
+			case ENABLED:
 			
-			panel.setVisible(true);
+				panel.setVisible(true);
 			
-			//get index of device selected
-			for (int i = 0; i < Devices.con.length; i++){
-				if(Devices.con[i].getName() == deviceSelected){
-					deviceSelectedIndex = i;
-					break;
+				//get index of device selected
+				for (int i = 0; i < Devices.con.length; i++){
+					if(Devices.con[i].getName() == deviceSelected){
+						deviceSelectedIndex = i;
+						break;
+					}	
 				}
-			}
-			//clear comboBox if it has items
-			if(comboBox.getItemCount() > 0){
-				comboBox.removeAllItems();
-			}
+				//clear comboBox if it has items
+				if(comboBox.getItemCount() > 0){
+					comboBox.removeAllItems();
+				}	
 			
 		
-			//populate ComboBox
-			for(int i = 0; i < Devices.com[deviceSelectedIndex].length; i++){
-				comboBox.addItem(Devices.com[deviceSelectedIndex][i].getName());
-			} 
-			break;
+				//populate ComboBox
+				for(int i = 0; i < Devices.com[deviceSelectedIndex].length; i++){
+					comboBox.addItem(Devices.com[deviceSelectedIndex][i].getName());
+				} 
+				break;
 			
-		case DISABLED:
+			case DISABLED:
 			
-			panel.setVisible(false);
-			break;
+				panel.setVisible(false);
+				break;
 			
-		}
+			}
+			if(showAllControllers.isSelected()){
+				refreshDeviceList(controllerType.ALL);
+			}else{
+				refreshDeviceList(controllerType.LIMITED);
+			}
 		
 	}
 	/*
 	 * Refreshes the list of devices under Add > Device
 	 */
-	public static void refreshDeviceList(controllerTypes r){
+	public static void refreshDeviceList(controllerType r){
 
 		
 		Devices.con = ControllerEnvironment.getDefaultEnvironment().getControllers();
