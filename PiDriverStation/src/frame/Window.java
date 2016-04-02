@@ -13,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -334,6 +335,7 @@ public class Window extends JFrame {
 				} else {
 					componentPanel.setVisible(false);
 				}
+				displayComponents();
 			}
 		});
 
@@ -509,44 +511,30 @@ public class Window extends JFrame {
 	/**
 	 * Saves the Components to a file.
 	 */
-	public static void saveComponents(String name) {
+	protected static void saveComponents(String path) {
 		try {
-			fos = new FileOutputStream(name);
-		} catch (FileNotFoundException e) {
-			System.out.println("File Already Exists!");
-		}
-		try {
+			fos = new FileOutputStream(path);
 			oos = new ObjectOutputStream(fos);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		try {
-			fos.flush();
+			oos.writeObject(addedComponents);
 			fos.close();
-
-			oos.flush();
 			oos.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		mntmSave.setEnabled(true);
 		System.out.println("Saved To File: " + saveName);
 	}
 
-	public static void openComponents(String name) {
-		try {
-			fis = new FileInputStream(name);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-
-		try {
+	protected static void openComponents(String path) {
+		try{
+			fis = new FileInputStream(path);
 			ois = new ObjectInputStream(fis);
-		} catch (IOException e) {
+			addedComponents = (ArrayList<AddedComponent>) ois.readObject();
+		} catch (ClassNotFoundException | IOException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
 
 	}
 
@@ -609,7 +597,7 @@ public class Window extends JFrame {
 	 * @author McGee
 	 *
 	 */
-	static class AddedComponent {
+	protected static class AddedComponent {
 		Component component;
 		Controller controller;
 		boolean isButton;
