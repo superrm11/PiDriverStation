@@ -41,7 +41,7 @@ import net.java.games.input.ControllerEnvironment;
  * @author McGee and Daniel
  *
  */
-public class Window extends JFrame {
+public class Window extends JFrame{
 
 	private static JMenu mnAdd;
 	private static JMenu mnDevice;
@@ -597,7 +597,11 @@ public class Window extends JFrame {
 	 * @author McGee
 	 *
 	 */
-	protected static class AddedComponent {
+	protected static class AddedComponent implements Serializable{
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
 		Component component;
 		Controller controller;
 		boolean isButton;
