@@ -39,6 +39,7 @@ import net.java.games.input.ControllerEnvironment;
 /**
  * 
  * @author McGee and Daniel
+ * 
  *
  */
 public class Window extends JFrame{
@@ -282,12 +283,12 @@ public class Window extends JFrame{
 		btnAddAsButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				addedComponents.add(new AddedComponent());
-				addedComponents.get(numOfComponents).deviceName = deviceSelected;
-				addedComponents.get(numOfComponents).componentName = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()].getName();
 				addedComponents.get(numOfComponents).setAsButton();
+				addedComponents.get(numOfComponents).component = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()].getName();
+				addedComponents.get(numOfComponents).controller = deviceSelected;
 				numOfComponents++;
-				
-				componentPanel.setVisible(false);
+				addItemPanel(state.DISABLED);
+				displayComponents();
 			}
 
 		});
@@ -295,12 +296,12 @@ public class Window extends JFrame{
 		btnAddAsAxis.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				addedComponents.add(new AddedComponent());
-				addedComponents.get(numOfComponents).deviceName = deviceSelected;
-				addedComponents.get(numOfComponents).componentName = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()].getName();
 				addedComponents.get(numOfComponents).setAsAxis();
+				addedComponents.get(numOfComponents).component = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()].getName();
+				addedComponents.get(numOfComponents).controller = deviceSelected;
 				numOfComponents++;
-				
-				componentPanel.setVisible(false);
+				addItemPanel(state.DISABLED);
+				displayComponents();
 			}
 
 		});
@@ -487,11 +488,24 @@ public class Window extends JFrame{
 	public static void displayComponents() {
 		componentList.setText("");
 		componentList.append("    Axis:\n");
+
+		for (int i = 0; i < addedComponents.size(); i++) {
+			if (addedComponents.get(i).isAxis) {
+				componentList.append(addedComponents.get(i).controller + "\n");
+				componentList.append("    -> " + addedComponents.get(i).component + "\n");
+			}
+		}
+		componentList.append("\n \n");
+		componentList.append("    Buttons:\n");
 		
 		for(int i = 0; i < addedComponents.size(); i++){
-			
+			if(addedComponents.get(i).isButton){
+				componentList.append(addedComponents.get(i).controller + "\n");
+				componentList.append("    -> " + addedComponents.get(i).component + "\n");
+			}
 		}
-
+		
+		componentList.append("\n \n     End");
 	}
 
 	/**
@@ -516,6 +530,8 @@ public class Window extends JFrame{
 			fis = new FileInputStream(path);
 			ois = new ObjectInputStream(fis);
 			addedComponents = (ArrayList<AddedComponent>) ois.readObject();
+			fis.close();
+			ois.close();
 		} catch (ClassNotFoundException | IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -584,20 +600,23 @@ public class Window extends JFrame{
 	 *
 	 */
 	protected static class AddedComponent implements Serializable{
-		public String deviceName;
-		public String componentName;
-		public boolean isAxis;
-		public boolean isButton;
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+		boolean isButton;
+		boolean isAxis;
+		
+		String component;
+		String controller;
 		
 		public void setAsAxis(){
 			isAxis = true;
 			isButton = false;
 		}
-		
 		public void setAsButton(){
-			isAxis = false;
 			isButton = true;
+			isAxis = false;
 		}
-		
 	}
 }
