@@ -1,4 +1,4 @@
-package frame;
+package main;
 
 import java.awt.Color;
 import java.awt.EventQueue;
@@ -31,7 +31,6 @@ import javax.swing.JRadioButtonMenuItem;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import hardware.Devices;
 import net.java.games.input.Component;
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;
@@ -446,7 +445,7 @@ public class Window extends JFrame{
 			for (int i = 0; i < Devices.con.length; i++) {
 				if (Devices.con[i].getType() == Controller.Type.GAMEPAD
 						|| Devices.con[i].getType() == Controller.Type.KEYBOARD) {
-					JMenuItem controller = new JMenuItem();
+					final JMenuItem controller = new JMenuItem();
 					controller.setText(Devices.con[i].getName());
 					mnDevice.add(controller);
 					controller.addActionListener(new ActionListener() {
@@ -461,7 +460,7 @@ public class Window extends JFrame{
 			break;
 		case ALL:
 			for (int i = 0; i < Devices.con.length; i++) {
-				JMenuItem controller = new JMenuItem();
+				final JMenuItem controller = new JMenuItem();
 				controller.setText(Devices.con[i].getName());
 				mnDevice.add(controller);
 				controller.addActionListener(new ActionListener() {
