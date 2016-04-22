@@ -13,8 +13,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.io.Serializable;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import javax.swing.JButton;
@@ -41,7 +45,7 @@ import net.java.games.input.ControllerEnvironment;
  * 
  *
  */
-public class Window extends JFrame{
+public class Window extends JFrame {
 
 	private static JMenu mnAdd;
 	private static JMenu mnDevice;
@@ -56,6 +60,9 @@ public class Window extends JFrame{
 	private static JMenuItem mntmOpen;
 	private static JMenuItem mntmSave;
 	private static JMenuItem mntmSaveAs;
+	private static JMenuItem mntmStartServer;
+	private static JMenuItem mntmStopServer;
+	private static JMenu mnNetwork;
 	private static JButton btnAddAsButton;
 	private static JButton btnAddAsAxis;
 	private static JButton cancelAddItem;
@@ -73,6 +80,8 @@ public class Window extends JFrame{
 
 	private static String deviceSelected;
 	private static String saveName;
+	public static int serverPort;
+	private static boolean stopServer;
 	private static int numOfComponents = 0;
 	private static int deviceSelectedIndex;
 	private static ArrayList<AddedComponent> addedComponents = new ArrayList<AddedComponent>();
@@ -112,6 +121,9 @@ public class Window extends JFrame{
 		Thread.sleep(500);
 		refreshDeviceList(controllerType.LIMITED);
 		displayComponents();
+		// (new Thread(new Window())).start();
+		PrintStatements statements = new PrintStatements();
+		statements.start();
 	}
 
 	/**
@@ -182,6 +194,16 @@ public class Window extends JFrame{
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
+
+		mnNetwork = new JMenu("Network");
+		mnSetup.add(mnNetwork);
+
+		mntmStartServer = new JMenuItem("Start Server");
+		mnNetwork.add(mntmStartServer);
+
+		mntmStopServer = new JMenuItem("Stop Server");
+		mnNetwork.add(mntmStopServer);
+		mntmStopServer.setEnabled(false);
 
 		// -----------------------Add Component PANEL
 		comboBox = new JComboBox<String>();
@@ -283,7 +305,9 @@ public class Window extends JFrame{
 			public void actionPerformed(ActionEvent arg0) {
 				addedComponents.add(new AddedComponent());
 				addedComponents.get(numOfComponents).setAsButton();
-				addedComponents.get(numOfComponents).component = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()].getName();
+				addedComponents
+						.get(numOfComponents).component = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()]
+								.getName();
 				addedComponents.get(numOfComponents).controller = deviceSelected;
 				numOfComponents++;
 				addItemPanel(state.DISABLED);
@@ -296,7 +320,9 @@ public class Window extends JFrame{
 			public void actionPerformed(ActionEvent arg0) {
 				addedComponents.add(new AddedComponent());
 				addedComponents.get(numOfComponents).setAsAxis();
-				addedComponents.get(numOfComponents).component = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()].getName();
+				addedComponents
+						.get(numOfComponents).component = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()]
+								.getName();
 				addedComponents.get(numOfComponents).controller = deviceSelected;
 				numOfComponents++;
 				addItemPanel(state.DISABLED);
@@ -337,6 +363,31 @@ public class Window extends JFrame{
 			}
 		});
 
+		// -------------------Setup Tab
+
+		mntmStartServer.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				mntmStartServer.setEnabled(false);
+				mntmStopServer.setEnabled(true);
+				try {
+					beginServer(9090, state.ENABLED);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+		});
+
+		mntmStopServer.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				mntmStartServer.setEnabled(true);
+				mntmStopServer.setEnabled(false);
+				try {
+					beginServer(0, state.DISABLED);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+		});
 	}
 
 	/**
@@ -496,14 +547,14 @@ public class Window extends JFrame{
 		}
 		componentList.append("\n \n");
 		componentList.append("    Buttons:\n");
-		
-		for(int i = 0; i < addedComponents.size(); i++){
-			if(addedComponents.get(i).isButton){
+
+		for (int i = 0; i < addedComponents.size(); i++) {
+			if (addedComponents.get(i).isButton) {
 				componentList.append(addedComponents.get(i).controller + "\n");
 				componentList.append("    -> " + addedComponents.get(i).component + "\n");
 			}
 		}
-		
+
 		componentList.append("\n \n     End");
 	}
 
@@ -525,7 +576,7 @@ public class Window extends JFrame{
 	}
 
 	protected static void openComponents(String path) {
-		try{
+		try {
 			fis = new FileInputStream(path);
 			ois = new ObjectInputStream(fis);
 			addedComponents = (ArrayList<AddedComponent>) ois.readObject();
@@ -535,7 +586,6 @@ public class Window extends JFrame{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
 
 	}
 
@@ -592,28 +642,87 @@ public class Window extends JFrame{
 		}
 	}
 
+	public static void beginServer(int port, state s) throws IOException {
+		
+		switch (s) {
+		case ENABLED:
+			stopServer = false;
+			serverPort = port;
+			System.out.println("this is working");
+			ServerThread server = new ServerThread();
+			server.start();
+			break;
+		case DISABLED:
+			stopServer = true;
+			break;
+
+		}
+
+	}
+	public static class PrintStatements extends Thread{
+		public void run(){
+			while(!stopServer){
+//				System.out.println(serverIsRunning);
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	public static class ServerThread extends Thread {
+		
+		public void run() {
+			try {
+				ServerSocket listener = new ServerSocket(serverPort);
+				try {
+					while (!stopServer) {
+						Socket socket = listener.accept();
+						try {
+							PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+							out.println(new Date().toString());
+						} finally {
+							socket.close();
+						}
+					}
+				} finally {
+					listener.close();
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			stopServer = false;
+			System.out.println("Ended Thread");
+		}
+
+	}
+
 	/**
 	 * This is to help with listing and sending devices
 	 * 
 	 * @author McGee
 	 *
 	 */
-	protected static class AddedComponent implements Serializable{
+	protected static class AddedComponent implements Serializable {
 		/**
 		 * 
 		 */
 		private static final long serialVersionUID = 1L;
 		boolean isButton;
 		boolean isAxis;
-		
+
 		String component;
 		String controller;
-		
-		public void setAsAxis(){
+
+		public void setAsAxis() {
 			isAxis = true;
 			isButton = false;
 		}
-		public void setAsButton(){
+
+		public void setAsButton() {
 			isButton = true;
 			isAxis = false;
 		}
