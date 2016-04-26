@@ -85,6 +85,7 @@ public class Window extends JFrame {
 	private static int numOfComponents = 0;
 	private static int deviceSelectedIndex;
 	private static ArrayList<AddedComponent> addedComponents = new ArrayList<AddedComponent>();
+	private static byte[] channels;
 
 	private enum windowState {
 		MINIMIZE, MAXIMIZE
@@ -675,6 +676,28 @@ public class Window extends JFrame {
 
 	public static class ServerThread extends Thread {
 		
+		public void sendJoystickVals(){
+			
+		}
+		
+		public boolean joystickSetup(){
+			for(int i = 0; i < addedComponents.size(); i++){
+				
+				for(int b = 0; b < Devices.con.length; b++){
+					if(addedComponents.get(i).controller == Devices.con[b].getName()){
+						addedComponents.get(i).finalControllerNumber = b;
+						break;
+					}
+					
+					
+					
+				}
+				
+			}
+			
+			return true;
+		}
+		
 		public void run() {
 			try {
 				ServerSocket listener = new ServerSocket(serverPort);
@@ -716,6 +739,9 @@ public class Window extends JFrame {
 
 		String component;
 		String controller;
+		
+		int finalControllerNumber;
+		int finalComponentNumber;
 
 		public void setAsAxis() {
 			isAxis = true;
