@@ -683,14 +683,19 @@ public class Window extends JFrame {
 		public boolean joystickSetup(){
 			for(int i = 0; i < addedComponents.size(); i++){
 				
+				
 				for(int b = 0; b < Devices.con.length; b++){
 					if(addedComponents.get(i).controller == Devices.con[b].getName()){
 						addedComponents.get(i).finalControllerNumber = b;
 						break;
 					}
-					
-					
-					
+				}
+				
+				for(int b = 0; b < Devices.con[addedComponents.get(i).finalControllerNumber].getComponents().length; b++){
+					if(Devices.com[addedComponents.get(i).finalControllerNumber][b].getName() == addedComponents.get(i).component){
+						addedComponents.get(i).finalComponentNumber = b;
+						break;
+					}
 				}
 				
 			}
