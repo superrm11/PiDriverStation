@@ -8,36 +8,31 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
 import java.io.Serializable;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
+import javax.swing.JSpinner;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import net.java.games.input.Component;
 import net.java.games.input.Controller;
 import net.java.games.input.ControllerEnvironment;
+import javax.swing.JLabel;
 
 /**
  * 
@@ -47,8 +42,13 @@ import net.java.games.input.ControllerEnvironment;
  */
 public class Window extends JFrame {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private static JMenu mnAdd;
 	private static JMenu mnDevice;
+	private static JMenu mnSetup;
 	private static JPanel contentPane;
 	private static JPanel componentPanel;
 	private static JPanel panel;
@@ -65,7 +65,7 @@ public class Window extends JFrame {
 	private static JMenu mnNetwork;
 	private static JButton btnAddAsButton;
 	private static JButton btnAddAsAxis;
-	private static JButton cancelAddItem;
+	private static JButton btnCancelAddItem;
 	private static TextArea componentList;
 	private static JComboBox<String> comboBox;
 
@@ -87,16 +87,26 @@ public class Window extends JFrame {
 	private static ArrayList<AddedComponent> addedComponents = new ArrayList<AddedComponent>();
 	private static byte[] channels;
 
+	public static Controller[] con;
+	public static Component[][] com;
+	private static JMenuItem mntmDeadZone;
+	private static JPanel deadzonePanel;
+	private static JComboBox<String> deadzoneComSel;
+	private static JComboBox<String> deadzoneConSel;
+	private static JButton btnCancelAddDeadzone;
+	private static JSpinner deadzonePercent;
+	private static JButton btnAddDeadzone;
+
 	private enum windowState {
 		MINIMIZE, MAXIMIZE
 	}
 
-	private enum controllerType {
+	private enum Refresh {
 		LIMITED, ALL, NON_DISPLAY
 	}
 
 	private enum state {
-		ENABLED, DISABLED
+		ENABLED, DISABLED, FIRST_START
 	}
 
 	/**
@@ -120,11 +130,12 @@ public class Window extends JFrame {
 			}
 		});
 		Thread.sleep(500);
-		refreshDeviceList(controllerType.LIMITED);
+		refreshDeviceList(Refresh.LIMITED);
 		displayComponents();
 		// (new Thread(new Window())).start();
 		PrintStatements statements = new PrintStatements();
 		statements.start();
+		populateDeadzoneMaterials(state.FIRST_START);
 	}
 
 	/**
@@ -167,6 +178,9 @@ public class Window extends JFrame {
 		mnDevice = new JMenu("Device");
 		mnAdd.add(mnDevice);
 
+		mntmDeadZone = new JMenuItem("Dead Zone");
+		mnAdd.add(mntmDeadZone);
+
 		showAllControllers = new JRadioButtonMenuItem("Show All Controllers");
 
 		mnAdd.add(showAllControllers);
@@ -189,7 +203,7 @@ public class Window extends JFrame {
 		// TODO add preferences like customization(color and stuff) and wireless
 		// settings
 		// as well as adding channels that will be mapped to components added
-		JMenu mnSetup = new JMenu("Setup");
+		mnSetup = new JMenu("Setup");
 		menuBar.add(mnSetup);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
@@ -226,13 +240,9 @@ public class Window extends JFrame {
 		btnAddAsAxis.setBounds(0, 50, 127, 25);
 		panel.add(btnAddAsAxis);
 
-		cancelAddItem = new JButton("Cancel");
-		cancelAddItem.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-			}
-		});
-		cancelAddItem.setBounds(50, 80, 77, 25);
-		panel.add(cancelAddItem);
+		btnCancelAddItem = new JButton("Cancel");
+		btnCancelAddItem.setBounds(30, 88, 97, 25);
+		panel.add(btnCancelAddItem);
 
 		// ---------------------Component Listing PANEL
 
@@ -249,6 +259,40 @@ public class Window extends JFrame {
 		componentList.setEditable(false);
 		componentList.setFocusable(false);
 
+		// -------------------Add Dead Zone Panel
+
+		deadzonePanel = new JPanel();
+		deadzonePanel.setBackground(Color.GRAY);
+		deadzonePanel.setBounds(0, 0, 139, 98);
+		contentPane.add(deadzonePanel);
+		deadzonePanel.setLayout(null);
+
+		deadzoneConSel = new JComboBox<String>();
+		deadzoneConSel.setBounds(0, 0, 139, 22);
+		deadzonePanel.add(deadzoneConSel);
+
+		deadzoneComSel = new JComboBox<String>();
+		deadzoneComSel.setBounds(0, 23, 139, 22);
+		deadzonePanel.add(deadzoneComSel);
+
+		deadzonePercent = new JSpinner();
+		deadzonePercent.setBounds(89, 74, 50, 22);
+		deadzonePanel.add(deadzonePercent);
+
+		JLabel lblPercentage = new JLabel("%");
+		lblPercentage.setForeground(Color.WHITE);
+		lblPercentage.setBounds(120, 58, 19, 16);
+		deadzonePanel.add(lblPercentage);
+
+		btnAddDeadzone = new JButton("Finish");
+		btnAddDeadzone.setBounds(0, 73, 81, 25);
+		deadzonePanel.add(btnAddDeadzone);
+
+		btnCancelAddDeadzone = new JButton("Cancel");
+		btnCancelAddDeadzone.setBounds(0, 46, 81, 25);
+		deadzonePanel.add(btnCancelAddDeadzone);
+		deadzonePanel.setVisible(false);
+
 	}
 
 	/*
@@ -262,9 +306,9 @@ public class Window extends JFrame {
 			public void actionPerformed(ActionEvent arg0) {
 				mnAdd.doClick();
 				if (showAllControllers.isSelected()) {
-					refreshDeviceList(controllerType.ALL);
+					refreshDeviceList(Refresh.ALL);
 				} else {
-					refreshDeviceList(controllerType.LIMITED);
+					refreshDeviceList(Refresh.LIMITED);
 				}
 			}
 
@@ -283,6 +327,12 @@ public class Window extends JFrame {
 		mntmOpen.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				beginOpening();
+				if (ServerThread.joystickSetup() == true) {
+					System.out.println("All Controllers and Devices Loaded Successfully.");
+				} else {
+					System.out.println("Please make sure all controllers are plugged in.");
+				}
+				displayComponents();
 
 			}
 		});
@@ -306,9 +356,8 @@ public class Window extends JFrame {
 			public void actionPerformed(ActionEvent arg0) {
 				addedComponents.add(new AddedComponent());
 				addedComponents.get(numOfComponents).setAsButton();
-				addedComponents
-						.get(numOfComponents).component = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()]
-								.getName();
+				addedComponents.get(numOfComponents).component = com[deviceSelectedIndex][comboBox.getSelectedIndex()]
+						.getName();
 				addedComponents.get(numOfComponents).controller = deviceSelected;
 				numOfComponents++;
 				addItemPanel(state.DISABLED);
@@ -321,9 +370,8 @@ public class Window extends JFrame {
 			public void actionPerformed(ActionEvent arg0) {
 				addedComponents.add(new AddedComponent());
 				addedComponents.get(numOfComponents).setAsAxis();
-				addedComponents
-						.get(numOfComponents).component = Devices.com[deviceSelectedIndex][comboBox.getSelectedIndex()]
-								.getName();
+				addedComponents.get(numOfComponents).component = com[deviceSelectedIndex][comboBox.getSelectedIndex()]
+						.getName();
 				addedComponents.get(numOfComponents).controller = deviceSelected;
 				numOfComponents++;
 				addItemPanel(state.DISABLED);
@@ -332,23 +380,19 @@ public class Window extends JFrame {
 
 		});
 
-		cancelAddItem.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				addItemPanel(state.DISABLED);
-			}
-		});
+		// TODO add back in Cancel Add Item Button
 		// ------------------View TAB
 		mntmMaximize.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				setWindow(windowState.MAXIMIZE);
-				refreshDeviceList(controllerType.LIMITED);
+				refreshDeviceList(Refresh.LIMITED);
 			}
 		});
 
 		mntmMinimize.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				setWindow(windowState.MINIMIZE);
-				refreshDeviceList(controllerType.LIMITED);
+				refreshDeviceList(Refresh.LIMITED);
 			}
 
 		});
@@ -364,6 +408,12 @@ public class Window extends JFrame {
 			}
 		});
 
+		btnCancelAddItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				addItemPanel(state.DISABLED);
+			}
+
+		});
 		// -------------------Setup Tab
 
 		mntmStartServer.addActionListener(new ActionListener() {
@@ -388,6 +438,27 @@ public class Window extends JFrame {
 					e1.printStackTrace();
 				}
 			}
+		});
+
+		// -------------------Add Dead Zone Panel
+
+		mntmDeadZone.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				deadzonePanel.setVisible(true);
+			}
+		});
+
+		btnCancelAddDeadzone.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+
+			}
+		});
+		
+		btnAddDeadzone.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e) {
+				setDeadzone();
+			}
+			
 		});
 	}
 
@@ -439,7 +510,7 @@ public class Window extends JFrame {
 	 *            describes whether the frame is being enabled or disabled
 	 */
 	static void addItemPanel(state s) {
-		refreshDeviceList(controllerType.NON_DISPLAY);
+		refreshDeviceList(Refresh.NON_DISPLAY);
 
 		switch (s) {
 		case ENABLED:
@@ -447,8 +518,8 @@ public class Window extends JFrame {
 			panel.setVisible(true);
 
 			// get index of device selected
-			for (int i = 0; i < Devices.con.length; i++) {
-				if (Devices.con[i].getName() == deviceSelected) {
+			for (int i = 0; i < con.length; i++) {
+				if (con[i].getName() == deviceSelected) {
 					deviceSelectedIndex = i;
 					break;
 				}
@@ -459,8 +530,8 @@ public class Window extends JFrame {
 			}
 
 			// populate ComboBox
-			for (int i = 0; i < Devices.com[deviceSelectedIndex].length; i++) {
-				comboBox.addItem(Devices.com[deviceSelectedIndex][i].getName());
+			for (int i = 0; i < com[deviceSelectedIndex].length; i++) {
+				comboBox.addItem(com[deviceSelectedIndex][i].getName());
 			}
 			break;
 
@@ -468,12 +539,14 @@ public class Window extends JFrame {
 
 			panel.setVisible(false);
 			break;
+		default:
+			break;
 
 		}
 		if (showAllControllers.isSelected()) {
-			refreshDeviceList(controllerType.ALL);
+			refreshDeviceList(Refresh.ALL);
 		} else {
-			refreshDeviceList(controllerType.LIMITED);
+			refreshDeviceList(Refresh.LIMITED);
 		}
 
 	}
@@ -481,24 +554,25 @@ public class Window extends JFrame {
 	/*
 	 * Refreshes the list of devices under Add > Device
 	 */
-	public static void refreshDeviceList(controllerType r) {
+	public static void refreshDeviceList(Refresh r) {
 
-		Devices.con = ControllerEnvironment.getDefaultEnvironment().getControllers();
-		Devices.com = new Component[Devices.con.length][];
+		con = ControllerEnvironment.getDefaultEnvironment().getControllers();
+		com = new Component[con.length][];
 
-		for (int i = 0; i < Devices.con.length; i++) {
-			Devices.com[i] = Devices.con[i].getComponents();
-		}
-		if (mnDevice.getItemCount() > 0) {
-			mnDevice.removeAll();
+		for (int i = 0; i < con.length; i++) {
+			com[i] = con[i].getComponents();
 		}
 		switch (r) {
 		case LIMITED:
-			for (int i = 0; i < Devices.con.length; i++) {
-				if (Devices.con[i].getType() == Controller.Type.GAMEPAD
-						|| Devices.con[i].getType() == Controller.Type.KEYBOARD) {
+
+			if (mnDevice.getItemCount() > 0) {
+				mnDevice.removeAll();
+			}
+
+			for (int i = 0; i < con.length; i++) {
+				if (con[i].getType() == Controller.Type.GAMEPAD || con[i].getType() == Controller.Type.KEYBOARD) {
 					final JMenuItem controller = new JMenuItem();
-					controller.setText(Devices.con[i].getName());
+					controller.setText(con[i].getName());
 					mnDevice.add(controller);
 					controller.addActionListener(new ActionListener() {
 						public void actionPerformed(ActionEvent arg0) {
@@ -511,9 +585,14 @@ public class Window extends JFrame {
 			}
 			break;
 		case ALL:
-			for (int i = 0; i < Devices.con.length; i++) {
+
+			if (mnDevice.getItemCount() > 0) {
+				mnDevice.removeAll();
+			}
+
+			for (int i = 0; i < con.length; i++) {
 				final JMenuItem controller = new JMenuItem();
-				controller.setText(Devices.con[i].getName());
+				controller.setText(con[i].getName());
 				mnDevice.add(controller);
 				controller.addActionListener(new ActionListener() {
 					public void actionPerformed(ActionEvent arg0) {
@@ -525,8 +604,8 @@ public class Window extends JFrame {
 			break;
 
 		case NON_DISPLAY:
-			for (int i = 0; i < Devices.con.length; i++) {
-				Devices.com[i] = Devices.con[i].getComponents();
+			for (int i = 0; i < con.length; i++) {
+				com[i] = con[i].getComponents();
 			}
 			break;
 		}
@@ -576,6 +655,7 @@ public class Window extends JFrame {
 		System.out.println("Saved To File: " + saveName);
 	}
 
+	@SuppressWarnings({ "unchecked" })
 	protected static void openComponents(String path) {
 		try {
 			fis = new FileInputStream(path);
@@ -644,7 +724,7 @@ public class Window extends JFrame {
 	}
 
 	public static void beginServer(int port, state s) throws IOException {
-		
+
 		switch (s) {
 		case ENABLED:
 			stopServer = false;
@@ -656,14 +736,40 @@ public class Window extends JFrame {
 		case DISABLED:
 			stopServer = true;
 			break;
+		default:
+			break;
 
 		}
 
 	}
-	public static class PrintStatements extends Thread{
-		public void run(){
-			while(!stopServer){
-//				System.out.println(serverIsRunning);
+
+	public static void setDeadzone() {
+//		addedComponents.get(deadzoneConSel.getSelectedIndex()).deadzonePercentage = deadzonePercent.
+	}
+
+	public static void populateDeadzoneMaterials(state s) {
+		refreshDeviceList(Refresh.NON_DISPLAY);
+		switch (s) {
+		case FIRST_START:
+			deadzoneConSel.removeAllItems();
+			for (int i = 0; i < con.length; i++) {
+				deadzoneConSel.addItem(con[i].getName());
+			}
+		case ENABLED:
+			deadzoneComSel.removeAllItems();
+			for (int i = 0; i < con[deadzoneConSel.getSelectedIndex()].getComponents().length; i++) {
+				deadzoneComSel.addItem(com[deadzoneConSel.getSelectedIndex()][i].getName());
+			}
+		default:
+			break;
+		}
+
+	}
+
+	public static class PrintStatements extends Thread {
+		public void run() {
+			while (!stopServer) {
+				// System.out.println(serverIsRunning);
 				try {
 					Thread.sleep(500);
 				} catch (InterruptedException e) {
@@ -675,47 +781,80 @@ public class Window extends JFrame {
 	}
 
 	public static class ServerThread extends Thread {
-		
-		public void sendJoystickVals(){
-			
-		}
-		
-		public boolean joystickSetup(){
-			for(int i = 0; i < addedComponents.size(); i++){
-				
-				
-				for(int b = 0; b < Devices.con.length; b++){
-					if(addedComponents.get(i).controller == Devices.con[b].getName()){
-						addedComponents.get(i).finalControllerNumber = b;
-						break;
-					}
-				}
-				
-				for(int b = 0; b < Devices.con[addedComponents.get(i).finalControllerNumber].getComponents().length; b++){
-					if(Devices.com[addedComponents.get(i).finalControllerNumber][b].getName() == addedComponents.get(i).component){
-						addedComponents.get(i).finalComponentNumber = b;
-						break;
-					}
-				}
-				
+
+		public void sendJoystickVals() {
+			channels = new byte[addedComponents.size()];
+			for (int i = 0; i < con.length; i++) {
+				con[i].poll();
 			}
-			
-			return true;
+
+			for (int i = 0; i < addedComponents.size(); i++) {
+				channels[i] = (byte) (Math.round(
+						com[addedComponents.get(i).finalControllerNumber][addedComponents.get(i).finalComponentNumber]
+								.getPollData() * 127));
+			}
+
+			for (int i = 0; i < channels.length; i++) {
+				System.out.println(channels[i]);
+			}
+
 		}
-		
+
+		public static boolean joystickSetup() {
+			for (int i = 0; i < addedComponents.size(); i++) {
+				addedComponents.get(i).finalComponentNumber = -1;
+				addedComponents.get(i).finalControllerNumber = -1;
+			}
+
+			for (int i = 0; i < addedComponents.size(); i++) {
+
+				for (int b = 0; b < con.length; b++) {
+					if (addedComponents.get(i).controller.equals(con[b].getName())) {
+						addedComponents.get(i).finalControllerNumber = b;
+						System.out.println(addedComponents.get(i).controller);
+						for (int c = 0; c < con[addedComponents.get(i).finalControllerNumber]
+								.getComponents().length; c++) {
+							if (com[addedComponents.get(i).finalControllerNumber][c].getName()
+									.equals(addedComponents.get(i).component)) {
+								addedComponents.get(i).finalComponentNumber = c;
+								System.out.println(addedComponents.get(i).component);
+								break;
+							}
+
+						}
+						break;
+					}
+				}
+
+				if (addedComponents.get(i).finalComponentNumber == -1
+						|| addedComponents.get(i).finalControllerNumber == -1) {
+					return false;
+				}
+
+			}
+			return true;
+
+		}
+
 		public void run() {
 			try {
 				ServerSocket listener = new ServerSocket(serverPort);
 				try {
 					while (!stopServer) {
-						Socket socket = listener.accept();
-						try {
-							PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-							out.println(new Date().toString());
-						} finally {
-							socket.close();
-						}
+						// System.out.println(stopServer);
+						// System.out.println("This should run over and over");
+						// Socket socket = listener.accept(); //THIS WILL STOP
+						// THIS WHILE LOOP FROM RUNNING MORE THAN ONCE
+						sendJoystickVals();
+						// try {
+						// PrintWriter out = new
+						// PrintWriter(socket.getOutputStream(), true);
+						// out.println(new Date().toString());
+						// } finally {
+						// socket.close();
+						// }
 					}
+					System.out.println(stopServer);
 				} finally {
 					listener.close();
 				}
@@ -734,7 +873,7 @@ public class Window extends JFrame {
 	 * @author McGee
 	 *
 	 */
-	protected static class AddedComponent implements Serializable {
+	public static class AddedComponent implements Serializable {
 		/**
 		 * 
 		 */
@@ -742,9 +881,11 @@ public class Window extends JFrame {
 		boolean isButton;
 		boolean isAxis;
 
+		int deadzonePercentage;
+
 		String component;
 		String controller;
-		
+
 		int finalControllerNumber;
 		int finalComponentNumber;
 
