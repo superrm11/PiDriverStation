@@ -857,13 +857,14 @@ public class Window extends JFrame {
 							PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 							out.println("Connection Established at: " + new Date().toString());
 							System.out.println("Connection Established at: " + new Date().toString());
-							System.out.println("To: " + socket.getInetAddress() + ":" + socket.getPort());
+							System.out.println("To: " + socket.getInetAddress() + ":" + socket.getLocalPort());
 							Thread.sleep(1000);
-							System.out.println("Sending Joystick Values to: " + socket.getInetAddress() + ":" + socket.getPort());
-							while(!stopServer){
+							System.out.println("Sending Joystick Values to: " + socket.getInetAddress() + ":"
+									+ socket.getLocalPort());
+							while (!stopServer) {
 								sendJoystickVals();
 							}
-							
+
 						} catch (InterruptedException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
