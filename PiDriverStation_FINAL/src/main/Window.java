@@ -659,6 +659,11 @@ public class Window extends JFrame {
 		System.out.println("Saved To File: " + saveName);
 	}
 
+	/**
+	 * Saves a component to the path specified
+	 * 
+	 * @param path
+	 */
 	@SuppressWarnings({ "unchecked" })
 	protected static void openComponents(String path) {
 		try {
@@ -709,6 +714,9 @@ public class Window extends JFrame {
 		}
 	}
 
+	/**
+	 * Begins the process of opening a file, calls the openComponents method
+	 */
 	public static void beginOpening() {
 		JFileChooser fileChooser = new JFileChooser();
 
@@ -727,6 +735,14 @@ public class Window extends JFrame {
 		}
 	}
 
+	/**
+	 * Begins the server that sends joystick values to the other device, as well
+	 * as the Arduino .ino file.
+	 * 
+	 * @param port
+	 * @param s
+	 * @throws IOException
+	 */
 	public static void beginServer(int port, state s) throws IOException {
 
 		switch (s) {
@@ -747,11 +763,19 @@ public class Window extends JFrame {
 
 	}
 
+	/**
+	 * Sets the deadzone of a component based on the Frame's JComboBox
+	 */
 	public static void setDeadzone() {
 		// addedComponents.get(deadzoneConSel.getSelectedIndex()).deadzonePercentage
 		// = deadzonePercent.
 	}
 
+	/**
+	 * Populates the controllers and components for the deadzone comboboxes.
+	 * 
+	 * @param s
+	 */
 	public static void populateDeadzoneMaterials(state s) {
 		refreshDeviceList(Refresh.NON_DISPLAY);
 		switch (s) {
@@ -862,7 +886,8 @@ public class Window extends JFrame {
 							System.out.println("Sending Joystick Values to: " + socket.getInetAddress() + ":"
 									+ socket.getLocalPort());
 							while (!stopServer) {
-								sendJoystickVals();
+								// sendJoystickVals();
+								out.println("(Replace with Joy Vals");
 							}
 
 						} catch (InterruptedException e) {
