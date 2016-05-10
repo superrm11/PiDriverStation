@@ -12,9 +12,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.io.Serializable;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Date;
+
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
@@ -453,12 +457,12 @@ public class Window extends JFrame {
 
 			}
 		});
-		
-		btnAddDeadzone.addActionListener(new ActionListener(){
+
+		btnAddDeadzone.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				setDeadzone();
 			}
-			
+
 		});
 	}
 
@@ -744,7 +748,8 @@ public class Window extends JFrame {
 	}
 
 	public static void setDeadzone() {
-//		addedComponents.get(deadzoneConSel.getSelectedIndex()).deadzonePercentage = deadzonePercent.
+		// addedComponents.get(deadzoneConSel.getSelectedIndex()).deadzonePercentage
+		// = deadzonePercent.
 	}
 
 	public static void populateDeadzoneMaterials(state s) {
@@ -838,21 +843,26 @@ public class Window extends JFrame {
 
 		public void run() {
 			try {
-				ServerSocket listener = new ServerSocket(serverPort);
+				ServerSocket listener = null;
+				listener = new ServerSocket(serverPort);
+
 				try {
+
 					while (!stopServer) {
-						// System.out.println(stopServer);
-						// System.out.println("This should run over and over");
-						// Socket socket = listener.accept(); //THIS WILL STOP
+						System.out.println("This should run over and over");
+						System.out.println(stopServer);
+
+						Socket socket = listener.accept(); // THIS WILL STOP
 						// THIS WHILE LOOP FROM RUNNING MORE THAN ONCE
+						// This will not progress it until a connection is
+						// established.
 						sendJoystickVals();
-						// try {
-						// PrintWriter out = new
-						// PrintWriter(socket.getOutputStream(), true);
-						// out.println(new Date().toString());
-						// } finally {
-						// socket.close();
-						// }
+						try {
+							PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+							out.println(new Date().toString());
+						} finally {
+							socket.close();
+						}
 					}
 					System.out.println(stopServer);
 				} finally {
