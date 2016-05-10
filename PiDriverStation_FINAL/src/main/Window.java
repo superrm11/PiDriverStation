@@ -849,17 +849,24 @@ public class Window extends JFrame {
 				try {
 
 					while (!stopServer) {
-						System.out.println("This should run over and over");
-						System.out.println(stopServer);
-
 						Socket socket = listener.accept(); // THIS WILL STOP
 						// THIS WHILE LOOP FROM RUNNING MORE THAN ONCE
 						// This will not progress it until a connection is
 						// established.
-						sendJoystickVals();
 						try {
 							PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-							out.println(new Date().toString());
+							out.println("Connection Established at: " + new Date().toString());
+							System.out.println("Connection Established at: " + new Date().toString());
+							System.out.println("To: " + socket.getInetAddress() + ":" + socket.getPort());
+							Thread.sleep(1000);
+							System.out.println("Sending Joystick Values to: " + socket.getInetAddress() + ":" + socket.getPort());
+							while(!stopServer){
+								sendJoystickVals();
+							}
+							
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
 						} finally {
 							socket.close();
 						}
