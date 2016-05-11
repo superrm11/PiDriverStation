@@ -44,7 +44,7 @@ import javax.swing.JLabel;
  * 
  *
  */
-public class Window extends JFrame {
+public class Window extends JFrame /* implements Runnable */ {
 
 	/**
 	 * 
@@ -61,6 +61,7 @@ public class Window extends JFrame {
 	private static JMenuItem mntmMinimize;
 	private static JMenuItem mntmMaximize;
 	private static JMenuItem mntmExit;
+	private static JMenuItem mntmUpdate;
 	private static JMenuItem mntmOpen;
 	private static JMenuItem mntmSave;
 	private static JMenuItem mntmSaveAs;
@@ -84,6 +85,7 @@ public class Window extends JFrame {
 
 	private static String deviceSelected;
 	private static String saveName;
+	private static int previousComponent;
 	public static int serverPort;
 	private static boolean stopServer;
 	private static int numOfComponents = 0;
@@ -133,13 +135,16 @@ public class Window extends JFrame {
 				}
 			}
 		});
-		Thread.sleep(500);
+		Thread.sleep(1000);
 		refreshDeviceList(Refresh.LIMITED);
 		displayComponents();
 		// (new Thread(new Window())).start();
 		PrintStatements statements = new PrintStatements();
 		statements.start();
 		populateDeadzoneMaterials(state.FIRST_START);
+		Background b = new Background();
+		b.start();
+
 	}
 
 	/**
@@ -170,6 +175,9 @@ public class Window extends JFrame {
 
 		mntmOpen = new JMenuItem("Open");
 		mnFile.add(mntmOpen);
+
+		mntmUpdate = new JMenuItem("Update Device List");
+		mnFile.add(mntmUpdate);
 
 		mntmExit = new JMenuItem("Exit");
 		mnFile.add(mntmExit);
@@ -299,7 +307,7 @@ public class Window extends JFrame {
 
 	}
 
-	/*
+	/**
 	 * Begins Action Listeners for the components of the frame.
 	 */
 	public static void beginListeners() {
@@ -355,6 +363,11 @@ public class Window extends JFrame {
 
 		});
 
+		mntmUpdate.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				refreshDeviceList(Refresh.ALL);
+			}
+		});
 		// ------------------Add Item Panel
 		btnAddAsButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -384,7 +397,6 @@ public class Window extends JFrame {
 
 		});
 
-		// TODO add back in Cancel Add Item Button
 		// ------------------View TAB
 		mntmMaximize.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -454,15 +466,14 @@ public class Window extends JFrame {
 
 		btnCancelAddDeadzone.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-
+				deadzonePanel.setVisible(false);
 			}
 		});
 
 		btnAddDeadzone.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				setDeadzone();
+				deadzonePanel.setVisible(false);
 			}
-
 		});
 	}
 
@@ -795,6 +806,12 @@ public class Window extends JFrame {
 
 	}
 
+	/**
+	 * Continuously sends print statements for testing.
+	 * 
+	 * @author superrm11
+	 *
+	 */
 	public static class PrintStatements extends Thread {
 		public void run() {
 			while (!stopServer) {
@@ -809,10 +826,32 @@ public class Window extends JFrame {
 		}
 	}
 
+	/**
+	 * Contains a thread that will run code outside the main thread or listeners
+	 * 
+	 * @author superrm11
+	 *
+	 */
+	public static class Background extends Thread {
+		public void run() {
+			while (true) {
+				if (deadzonePanel.isVisible() && previousComponent != deadzoneConSel.getSelectedIndex()) {
+					previousComponent = deadzoneConSel.getSelectedIndex();
+					populateDeadzoneMaterials(state.ENABLED);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Contains a thread that runs the server for sending joystick values
+	 * 
+	 * @author superrm11
+	 *
+	 */
 	public static class ServerThread extends Thread {
 
-		public void sendJoystickVals() {
-			channels = new byte[addedComponents.size()];
+		public byte[] sendJoystickVals() {
 			for (int i = 0; i < con.length; i++) {
 				con[i].poll();
 			}
@@ -826,7 +865,7 @@ public class Window extends JFrame {
 			for (int i = 0; i < channels.length; i++) {
 				System.out.println(channels[i]);
 			}
-
+			return channels;
 		}
 
 		public static boolean joystickSetup() {
@@ -861,6 +900,8 @@ public class Window extends JFrame {
 				}
 
 			}
+
+			channels = new byte[addedComponents.size()];
 			return true;
 
 		}
@@ -885,9 +926,11 @@ public class Window extends JFrame {
 							Thread.sleep(1000);
 							System.out.println("Sending Joystick Values to: " + socket.getInetAddress() + ":"
 									+ socket.getLocalPort());
-							while (!stopServer) {
-								// sendJoystickVals();
-								out.println("(Replace with Joy Vals");
+							if (joystickSetup()) {
+								while (!stopServer) {
+									// sendJoystickVals();
+									socket.getOutputStream().write(sendJoystickVals());
+								}
 							}
 
 						} catch (InterruptedException e) {
