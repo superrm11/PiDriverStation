@@ -929,7 +929,8 @@ public class Window extends JFrame /* implements Runnable */ {
 							if (joystickSetup()) {
 								while (!stopServer) {
 									// sendJoystickVals();
-									socket.getOutputStream().write(sendJoystickVals());
+									oos = new ObjectOutputStream(socket.getOutputStream());
+									oos.writeObject(sendJoystickVals());
 								}
 							}
 
