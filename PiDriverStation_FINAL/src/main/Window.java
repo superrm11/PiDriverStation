@@ -849,7 +849,12 @@ public class Window extends JFrame /* implements Runnable */ {
 	 * @author superrm11
 	 *
 	 */
-	public static class ServerThread extends Thread {
+	public static class ServerThread extends Thread implements Serializable {
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -9152309114590953694L;
 
 		public byte[] sendJoystickVals() {
 			for (int i = 0; i < con.length; i++) {
@@ -865,6 +870,8 @@ public class Window extends JFrame /* implements Runnable */ {
 			for (int i = 0; i < channels.length; i++) {
 				System.out.println(channels[i]);
 			}
+			//TEMPORARY
+			channels[0] = 42;
 			return channels;
 		}
 
@@ -901,12 +908,14 @@ public class Window extends JFrame /* implements Runnable */ {
 
 			}
 
-			channels = new byte[addedComponents.size()];
+//			channels = new byte[addedComponents.size()];
+			channels = new byte[1];
 			return true;
 
 		}
 
 		public void run() {
+			joystickSetup();
 			try {
 				ServerSocket listener = null;
 				listener = new ServerSocket(serverPort);
@@ -924,12 +933,10 @@ public class Window extends JFrame /* implements Runnable */ {
 							System.out.println("Connection Established at: " + new Date().toString());
 							System.out.println("To: " + socket.getInetAddress() + ":" + socket.getLocalPort());
 							Thread.sleep(1000);
-							System.out.println("Sending Joystick Values to: " + socket.getInetAddress() + ":"
-									+ socket.getLocalPort());
+							oos = new ObjectOutputStream(socket.getOutputStream());
 							if (joystickSetup()) {
 								while (!stopServer) {
 									// sendJoystickVals();
-									oos = new ObjectOutputStream(socket.getOutputStream());
 									oos.writeObject(sendJoystickVals());
 								}
 							}
