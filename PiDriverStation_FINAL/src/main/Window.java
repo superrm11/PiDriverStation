@@ -12,13 +12,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
 import java.io.Serializable;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Date;
-
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
@@ -91,6 +88,10 @@ public class Window extends JFrame /* implements Runnable */ {
 	private static int deviceSelectedIndex;
 	private static ArrayList<AddedComponent> addedComponents = new ArrayList<AddedComponent>();
 	private static byte[] channels;
+
+	public static boolean isFirstStart = true;
+	public static ServerSocket listener = null;
+	public static Socket socket = null;
 
 	public static Controller[] con;
 	public static Component[][] com;
@@ -738,7 +739,6 @@ public class Window extends JFrame /* implements Runnable */ {
 		}
 	}
 
-
 	/**
 	 * Sets the deadzone of a component based on the Frame's JComboBox
 	 */
@@ -817,11 +817,12 @@ public class Window extends JFrame /* implements Runnable */ {
 	public static class ServerThread extends Thread implements Serializable {
 
 		private static final long serialVersionUID = 1L;
-		private  int port;
-		ServerThread(int port){
+		private int port;
+
+		ServerThread(int port) {
 			this.port = port;
 		}
-		
+
 		public byte[] sendJoystickVals() {
 			for (int i = 0; i < con.length; i++) {
 				con[i].poll();
@@ -869,7 +870,7 @@ public class Window extends JFrame /* implements Runnable */ {
 
 			}
 
-//			channels = new byte[addedComponents.size()];
+			// channels = new byte[addedComponents.size()];
 			channels = new byte[1];
 			return true;
 
@@ -878,25 +879,24 @@ public class Window extends JFrame /* implements Runnable */ {
 		public void run() {
 			stopServer = false;
 			joystickSetup();
-			ServerSocket listener = null;
-			Socket socket = null;
-			try{
-				listener = new ServerSocket(port);
+			try {
+				if (isFirstStart) {
+					listener = new ServerSocket(port);
+					isFirstStart = false;
+				}
 				socket = listener.accept();
 				ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-				while(!stopServer){
+				while (!stopServer) {
 					oos.writeObject(sendJoystickVals());
 					oos.flush();
 				}
-			}catch(IOException e){
-				e.printStackTrace();
-				System.out.println("Server Stopped Unexpectedly, or Client Closed the Application.");
-			}finally{
-				try{
 				listener.close();
 				socket.close();
-				}catch(IOException e){}
+			} catch (IOException e) {
+				e.printStackTrace();
+				System.out.println("Server Stopped Unexpectedly, or Client Closed the Application.");
 			}
+			System.out.println("Thread Finished");
 		}
 
 	}
