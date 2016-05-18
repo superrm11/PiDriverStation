@@ -86,7 +86,6 @@ public class Window extends JFrame /* implements Runnable */ {
 	private static String deviceSelected;
 	private static String saveName;
 	private static int previousComponent;
-	public static int serverPort;
 	private static boolean stopServer;
 	private static int numOfComponents = 0;
 	private static int deviceSelectedIndex;
@@ -436,11 +435,8 @@ public class Window extends JFrame /* implements Runnable */ {
 			public void actionPerformed(ActionEvent e) {
 				mntmStartServer.setEnabled(false);
 				mntmStopServer.setEnabled(true);
-				try {
-					beginServer(9090, state.ENABLED);
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
+				ServerThread server = new ServerThread(9090);
+				server.start();
 			}
 		});
 
@@ -448,11 +444,7 @@ public class Window extends JFrame /* implements Runnable */ {
 			public void actionPerformed(ActionEvent e) {
 				mntmStartServer.setEnabled(true);
 				mntmStopServer.setEnabled(false);
-				try {
-					beginServer(0, state.DISABLED);
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
+				stopServer = true;
 			}
 		});
 
@@ -746,33 +738,6 @@ public class Window extends JFrame /* implements Runnable */ {
 		}
 	}
 
-	/**
-	 * Begins the server that sends joystick values to the other device, as well
-	 * as the Arduino .ino file.
-	 * 
-	 * @param port
-	 * @param s
-	 * @throws IOException
-	 */
-	public static void beginServer(int port, state s) throws IOException {
-
-		switch (s) {
-		case ENABLED:
-			stopServer = false;
-			serverPort = port;
-			System.out.println("this is working");
-			ServerThread server = new ServerThread();
-			server.start();
-			break;
-		case DISABLED:
-			stopServer = true;
-			break;
-		default:
-			break;
-
-		}
-
-	}
 
 	/**
 	 * Sets the deadzone of a component based on the Frame's JComboBox
@@ -851,11 +816,12 @@ public class Window extends JFrame /* implements Runnable */ {
 	 */
 	public static class ServerThread extends Thread implements Serializable {
 
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = -9152309114590953694L;
-
+		private static final long serialVersionUID = 1L;
+		private  int port;
+		ServerThread(int port){
+			this.port = port;
+		}
+		
 		public byte[] sendJoystickVals() {
 			for (int i = 0; i < con.length; i++) {
 				con[i].poll();
@@ -866,12 +832,7 @@ public class Window extends JFrame /* implements Runnable */ {
 						com[addedComponents.get(i).finalControllerNumber][addedComponents.get(i).finalComponentNumber]
 								.getPollData() * 127));
 			}
-
-			for (int i = 0; i < channels.length; i++) {
-				System.out.println(channels[i]);
-			}
-			//TEMPORARY
-			channels[0] = 42;
+			System.out.println(channels[0]);
 			return channels;
 		}
 
@@ -915,48 +876,27 @@ public class Window extends JFrame /* implements Runnable */ {
 		}
 
 		public void run() {
-			joystickSetup();
-			try {
-				ServerSocket listener = null;
-				listener = new ServerSocket(serverPort);
-
-				try {
-
-					while (!stopServer) {
-						Socket socket = listener.accept(); // THIS WILL STOP
-						// THIS WHILE LOOP FROM RUNNING MORE THAN ONCE
-						// This will not progress it until a connection is
-						// established.
-						try {
-							PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-							out.println("Connection Established at: " + new Date().toString());
-							System.out.println("Connection Established at: " + new Date().toString());
-							System.out.println("To: " + socket.getInetAddress() + ":" + socket.getLocalPort());
-							Thread.sleep(1000);
-							oos = new ObjectOutputStream(socket.getOutputStream());
-							if (joystickSetup()) {
-								while (!stopServer) {
-									// sendJoystickVals();
-									oos.writeObject(sendJoystickVals());
-								}
-							}
-
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} finally {
-							socket.close();
-						}
-					}
-					System.out.println(stopServer);
-				} finally {
-					listener.close();
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
 			stopServer = false;
-			System.out.println("Ended Thread");
+			joystickSetup();
+			ServerSocket listener = null;
+			Socket socket = null;
+			try{
+				listener = new ServerSocket(port);
+				socket = listener.accept();
+				ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+				while(!stopServer){
+					oos.writeObject(sendJoystickVals());
+					oos.flush();
+				}
+			}catch(IOException e){
+				e.printStackTrace();
+				System.out.println("Server Stopped Unexpectedly, or Client Closed the Application.");
+			}finally{
+				try{
+				listener.close();
+				socket.close();
+				}catch(IOException e){}
+			}
 		}
 
 	}
