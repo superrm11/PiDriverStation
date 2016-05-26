@@ -83,15 +83,18 @@ public class Window extends JFrame /* implements Runnable */ {
 	private static String deviceSelected;
 	private static String saveName;
 	private static int previousComponent;
-	private static boolean stopServer;
+	private static boolean stopSendServer;
 	private static int numOfComponents = 0;
 	private static int deviceSelectedIndex;
 	private static ArrayList<AddedComponent> addedComponents = new ArrayList<AddedComponent>();
-	private static byte[] channels;
 
-	public static boolean isFirstStart = true;
-	public static ServerSocket listener = null;
-	public static Socket socket = null;
+	public static boolean isSendFirstStart = true;
+	public static boolean isRecieveFirstStart = true;
+	public static ServerSocket sendListener = null;
+	public static ServerSocket recieveListener = null;
+
+	public static Socket sendSocket = null;
+	public static Socket recieveSocket = null;
 
 	public static Controller[] con;
 	public static Component[][] com;
@@ -339,7 +342,7 @@ public class Window extends JFrame /* implements Runnable */ {
 		mntmOpen.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				beginOpening();
-				if (ServerThread.joystickSetup() == true) {
+				if (SendServerThread.joystickSetup() == true) {
 					System.out.println("All Controllers and Devices Loaded Successfully.");
 				} else {
 					System.out.println("Please make sure all controllers are plugged in.");
@@ -436,7 +439,7 @@ public class Window extends JFrame /* implements Runnable */ {
 			public void actionPerformed(ActionEvent e) {
 				mntmStartServer.setEnabled(false);
 				mntmStopServer.setEnabled(true);
-				ServerThread server = new ServerThread(9090);
+				SendServerThread server = new SendServerThread(9090, 9091);
 				server.start();
 			}
 		});
@@ -445,7 +448,7 @@ public class Window extends JFrame /* implements Runnable */ {
 			public void actionPerformed(ActionEvent e) {
 				mntmStartServer.setEnabled(true);
 				mntmStopServer.setEnabled(false);
-				stopServer = true;
+				stopSendServer = true;
 			}
 		});
 
@@ -743,8 +746,14 @@ public class Window extends JFrame /* implements Runnable */ {
 	 * Sets the deadzone of a component based on the Frame's JComboBox
 	 */
 	public static void setDeadzone() {
-		// addedComponents.get(deadzoneConSel.getSelectedIndex()).deadzonePercentage
-		// = deadzonePercent.
+		for (int i = 0; i < addedComponents.size(); i++) {
+			if (addedComponents.get(i).finalControllerNumber == deadzoneConSel.getSelectedIndex()
+					&& addedComponents.get(i).deadzoneIndex == deadzoneComSel.getSelectedIndex()) {
+				addedComponents.get(i).deadzonePercentage = (int) deadzonePercent.getValue();
+				System.out.println(addedComponents.get(i).deadzonePercentage);
+			}
+		}
+
 	}
 
 	/**
@@ -759,11 +768,19 @@ public class Window extends JFrame /* implements Runnable */ {
 			deadzoneConSel.removeAllItems();
 			for (int i = 0; i < con.length; i++) {
 				deadzoneConSel.addItem(con[i].getName());
+
 			}
 		case ENABLED:
 			deadzoneComSel.removeAllItems();
-			for (int i = 0; i < con[deadzoneConSel.getSelectedIndex()].getComponents().length; i++) {
-				deadzoneComSel.addItem(com[deadzoneConSel.getSelectedIndex()][i].getName());
+			SendServerThread.joystickSetup();
+			int numOfDeadzones = 0;
+			for (int i = 0; i < addedComponents.size(); i++) {
+				if (addedComponents.get(i).isAxis
+						&& addedComponents.get(i).finalControllerNumber == deadzoneConSel.getSelectedIndex()) {
+					deadzoneComSel.addItem(addedComponents.get(i).component);
+					addedComponents.get(i).deadzoneIndex = numOfDeadzones;
+					numOfDeadzones++;
+				}
 			}
 		default:
 			break;
@@ -779,7 +796,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	 */
 	public static class PrintStatements extends Thread {
 		public void run() {
-			while (!stopServer) {
+			while (!stopSendServer) {
 				// System.out.println(serverIsRunning);
 				try {
 					Thread.sleep(500);
@@ -804,6 +821,11 @@ public class Window extends JFrame /* implements Runnable */ {
 					previousComponent = deadzoneConSel.getSelectedIndex();
 					populateDeadzoneMaterials(state.ENABLED);
 				}
+				try {
+					Thread.sleep(50);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
@@ -814,13 +836,15 @@ public class Window extends JFrame /* implements Runnable */ {
 	 * @author superrm11
 	 *
 	 */
-	public static class ServerThread extends Thread implements Serializable {
+	public static class SendServerThread extends Thread implements Serializable {
 
 		private static final long serialVersionUID = 1L;
-		private int port;
+		private static int sendPort;
+		private static byte[] sendChannels;
+		private static byte[] recieveChannels;
 
-		ServerThread(int port) {
-			this.port = port;
+		SendServerThread(int sendPort, int recievePort) {
+			this.sendPort = sendPort;
 		}
 
 		public byte[] sendJoystickVals() {
@@ -829,12 +853,12 @@ public class Window extends JFrame /* implements Runnable */ {
 			}
 
 			for (int i = 0; i < addedComponents.size(); i++) {
-				channels[i] = (byte) (Math.round(
+				sendChannels[i] = (byte) (Math.round(
 						com[addedComponents.get(i).finalControllerNumber][addedComponents.get(i).finalComponentNumber]
 								.getPollData() * 127));
 			}
-			System.out.println(channels[0]);
-			return channels;
+			System.out.println(sendChannels[0]);
+			return sendChannels;
 		}
 
 		public static boolean joystickSetup() {
@@ -871,32 +895,68 @@ public class Window extends JFrame /* implements Runnable */ {
 			}
 
 			// channels = new byte[addedComponents.size()];
-			channels = new byte[1];
+			sendChannels = new byte[1];
 			return true;
 
 		}
 
 		public void run() {
-			stopServer = false;
+			stopSendServer = false;
 			joystickSetup();
 			try {
-				if (isFirstStart) {
-					listener = new ServerSocket(port);
-					isFirstStart = false;
+				if (isSendFirstStart) {
+					sendListener = new ServerSocket(sendPort);
+					isSendFirstStart = false;
 				}
-				socket = listener.accept();
-				ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-				while (!stopServer) {
+				sendSocket = sendListener.accept();
+				ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
+				while (!stopSendServer) {
 					oos.writeObject(sendJoystickVals());
 					oos.flush();
 				}
-				listener.close();
-				socket.close();
+				sendListener.close();
+				sendSocket.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 				System.out.println("Server Stopped Unexpectedly, or Client Closed the Application.");
+				stopSendServer = true;
 			}
 			System.out.println("Thread Finished");
+		}
+
+	}
+
+	public static class RecieveServerThread extends Thread implements Serializable {
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+		private int recievePort;
+
+		RecieveServerThread(int recievePort) {
+			this.recievePort = recievePort;
+		}
+
+		public void run() {
+			try {
+				if(recievePort == SendServerThread.sendPort){
+					System.out.println("Please use different ports for Send/Recieve!");
+					return;
+				}
+				
+				if (isRecieveFirstStart) {
+					recieveListener = new ServerSocket(recievePort);
+				}
+				
+				
+				
+				
+			} catch (IOException e) {
+				e.printStackTrace();
+				System.out.println("Server Stopped Unexpectedly, or Client Closed the Application.");
+				
+			}
 		}
 
 	}
@@ -915,7 +975,8 @@ public class Window extends JFrame /* implements Runnable */ {
 		boolean isButton;
 		boolean isAxis;
 
-		int deadzonePercentage;
+		int deadzonePercentage = 0;
+		int deadzoneIndex;
 
 		String component;
 		String controller;
