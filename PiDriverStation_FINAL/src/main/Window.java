@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -84,17 +85,12 @@ public class Window extends JFrame /* implements Runnable */ {
 	private static String saveName;
 	private static int previousComponent;
 	private static boolean stopSendServer;
+	private static boolean stopRecieveServer;
 	private static int numOfComponents = 0;
 	private static int deviceSelectedIndex;
 	private static ArrayList<AddedComponent> addedComponents = new ArrayList<AddedComponent>();
 
-	public static boolean isSendFirstStart = true;
-	public static boolean isRecieveFirstStart = true;
-	public static ServerSocket sendListener = null;
-	public static ServerSocket recieveListener = null;
-
-	public static Socket sendSocket = null;
-	public static Socket recieveSocket = null;
+	public static boolean stopClientSend = false;
 
 	public static Controller[] con;
 	public static Component[][] com;
@@ -439,8 +435,10 @@ public class Window extends JFrame /* implements Runnable */ {
 			public void actionPerformed(ActionEvent e) {
 				mntmStartServer.setEnabled(false);
 				mntmStopServer.setEnabled(true);
-				SendServerThread server = new SendServerThread(9090, 9091);
-				server.start();
+				SendServerThread sServer = new SendServerThread(9090);
+				sServer.start();
+				RecieveServerThread rServer = new RecieveServerThread(9091);
+				rServer.start();
 			}
 		});
 
@@ -840,11 +838,12 @@ public class Window extends JFrame /* implements Runnable */ {
 
 		private static final long serialVersionUID = 1L;
 		private static int sendPort;
+		private ServerSocket sendListener = null;
 		private static byte[] sendChannels;
-		private static byte[] recieveChannels;
+		private Socket sendSocket = null;
 
-		SendServerThread(int sendPort, int recievePort) {
-			this.sendPort = sendPort;
+		SendServerThread(int sendPort) {
+			SendServerThread.sendPort = sendPort;
 		}
 
 		public byte[] sendJoystickVals() {
@@ -904,10 +903,6 @@ public class Window extends JFrame /* implements Runnable */ {
 			stopSendServer = false;
 			joystickSetup();
 			try {
-				if (isSendFirstStart) {
-					sendListener = new ServerSocket(sendPort);
-					isSendFirstStart = false;
-				}
 				sendSocket = sendListener.accept();
 				ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
 				while (!stopSendServer) {
@@ -920,6 +915,17 @@ public class Window extends JFrame /* implements Runnable */ {
 				e.printStackTrace();
 				System.out.println("Server Stopped Unexpectedly, or Client Closed the Application.");
 				stopSendServer = true;
+			} finally {
+				try {
+					if (!sendListener.isClosed())
+						sendListener.close();
+					if (!sendSocket.isClosed())
+						sendSocket.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
 			}
 			System.out.println("Thread Finished");
 		}
@@ -933,29 +939,41 @@ public class Window extends JFrame /* implements Runnable */ {
 		 */
 		private static final long serialVersionUID = 1L;
 		private int recievePort;
+		private static byte[] recieveChannels;
+		private ServerSocket recieveListener = null;
+		private Socket recieveSocket = null;
 
 		RecieveServerThread(int recievePort) {
 			this.recievePort = recievePort;
 		}
 
 		public void run() {
+			stopRecieveServer = false;
 			try {
-				if(recievePort == SendServerThread.sendPort){
+				if (recievePort == SendServerThread.sendPort) {
 					System.out.println("Please use different ports for Send/Recieve!");
 					return;
 				}
-				
-				if (isRecieveFirstStart) {
-					recieveListener = new ServerSocket(recievePort);
+				recieveSocket = recieveListener.accept();
+				ObjectInputStream ois = new ObjectInputStream(recieveSocket.getInputStream());
+				while (!stopRecieveServer) {
+					recieveChannels = (byte[]) ois.readObject();
 				}
-				
-				
-				
-				
-			} catch (IOException e) {
+				recieveSocket.close();
+				recieveListener.close();
+
+			} catch (IOException | ClassNotFoundException e) {
 				e.printStackTrace();
 				System.out.println("Server Stopped Unexpectedly, or Client Closed the Application.");
-				
+			} finally {
+				try {
+					if (!recieveListener.isClosed())
+						recieveListener.close();
+					if (!recieveSocket.isClosed())
+						recieveSocket.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 
@@ -993,5 +1011,33 @@ public class Window extends JFrame /* implements Runnable */ {
 			isButton = true;
 			isAxis = false;
 		}
+	}
+
+	// TEMPORARY-----------------------------------------------
+
+	public static class SendClientServer extends Thread implements Serializable {
+		private static final long serialVersionUID = 1L;
+		private int sendPort;
+		private Socket sendSocket;
+		private ObjectOutputStream oos;
+
+		private byte[] send = {1,2,3,4,5};
+		private SendClientServer(int sendPort) {
+			this.sendPort = sendPort;
+		}
+
+		public void run() {
+			try{
+				sendSocket = new Socket(InetAddress.getLocalHost(), sendPort);
+				oos = new ObjectOutputStream(sendSocket.getOutputStream());
+				while(!stopClientSend){
+					oos.writeObject(send);
+					oos.flush();
+				}
+			}catch(IOException e){
+				e.printStackTrace();
+			}
+		}
+
 	}
 }
