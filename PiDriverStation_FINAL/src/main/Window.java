@@ -84,13 +84,14 @@ public class Window extends JFrame /* implements Runnable */ {
 	private static String deviceSelected;
 	private static String saveName;
 	private static int previousComponent;
-	private static boolean stopSendServer;
+	public static boolean stopSendServer;
 	private static boolean stopRecieveServer;
 	private static int numOfComponents = 0;
 	private static int deviceSelectedIndex;
 	private static ArrayList<AddedComponent> addedComponents = new ArrayList<AddedComponent>();
 
 	public static boolean stopClientSend = false;
+	public static boolean stopClientRecieve = false;
 
 	public static Controller[] con;
 	public static Component[][] com;
@@ -309,7 +310,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	/**
 	 * Begins Action Listeners for the components of the frame.
 	 */
-	public static void beginListeners() {
+	private static void beginListeners() {
 
 		// ------------Add>Show All Controllers Radio Buttons
 
@@ -435,10 +436,11 @@ public class Window extends JFrame /* implements Runnable */ {
 			public void actionPerformed(ActionEvent e) {
 				mntmStartServer.setEnabled(false);
 				mntmStopServer.setEnabled(true);
-				SendServerThread sServer = new SendServerThread(9090);
-				sServer.start();
-				RecieveServerThread rServer = new RecieveServerThread(9091);
-				rServer.start();
+				try {
+					startAllServers();
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
 			}
 		});
 
@@ -446,7 +448,11 @@ public class Window extends JFrame /* implements Runnable */ {
 			public void actionPerformed(ActionEvent e) {
 				mntmStartServer.setEnabled(true);
 				mntmStopServer.setEnabled(false);
-				stopSendServer = true;
+				try {
+					stopAllServers();
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
 			}
 		});
 
@@ -518,7 +524,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	 * @param s
 	 *            describes whether the frame is being enabled or disabled
 	 */
-	static void addItemPanel(state s) {
+	private static void addItemPanel(state s) {
 		refreshDeviceList(Refresh.NON_DISPLAY);
 
 		switch (s) {
@@ -563,7 +569,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	/*
 	 * Refreshes the list of devices under Add > Device
 	 */
-	public static void refreshDeviceList(Refresh r) {
+	private static void refreshDeviceList(Refresh r) {
 
 		con = ControllerEnvironment.getDefaultEnvironment().getControllers();
 		com = new Component[con.length][];
@@ -624,7 +630,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	 * Creates the TextArea that displays the axis and buttons added and sorts
 	 * them at the same time.
 	 */
-	public static void displayComponents() {
+	private static void displayComponents() {
 		componentList.setText("");
 		componentList.append("    Axis:\n");
 
@@ -650,7 +656,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	/**
 	 * Saves the Components to a file.
 	 */
-	protected static void saveComponents(String path) {
+	private static void saveComponents(String path) {
 		try {
 			fos = new FileOutputStream(path);
 			oos = new ObjectOutputStream(fos);
@@ -670,7 +676,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	 * @param path
 	 */
 	@SuppressWarnings({ "unchecked" })
-	protected static void openComponents(String path) {
+	private static void openComponents(String path) {
 		try {
 			fis = new FileInputStream(path);
 			ois = new ObjectInputStream(fis);
@@ -688,7 +694,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	 * Begins the process of saving the components to a file by opening the
 	 * dialogue box.
 	 */
-	public static void beginSaving() {
+	private static void beginSaving() {
 		JFileChooser fileChooser = new JFileChooser();
 		FileNameExtensionFilter filter = new FileNameExtensionFilter("Configuration Files", "cfg");
 		fileChooser.setFileFilter(filter);
@@ -722,7 +728,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	/**
 	 * Begins the process of opening a file, calls the openComponents method
 	 */
-	public static void beginOpening() {
+	private static void beginOpening() {
 		JFileChooser fileChooser = new JFileChooser();
 
 		int rVal = fileChooser.showOpenDialog(fileChooser);
@@ -743,7 +749,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	/**
 	 * Sets the deadzone of a component based on the Frame's JComboBox
 	 */
-	public static void setDeadzone() {
+	private static void setDeadzone() {
 		for (int i = 0; i < addedComponents.size(); i++) {
 			if (addedComponents.get(i).finalControllerNumber == deadzoneConSel.getSelectedIndex()
 					&& addedComponents.get(i).deadzoneIndex == deadzoneComSel.getSelectedIndex()) {
@@ -759,7 +765,7 @@ public class Window extends JFrame /* implements Runnable */ {
 	 * 
 	 * @param s
 	 */
-	public static void populateDeadzoneMaterials(state s) {
+	private static void populateDeadzoneMaterials(state s) {
 		refreshDeviceList(Refresh.NON_DISPLAY);
 		switch (s) {
 		case FIRST_START:
@@ -784,6 +790,26 @@ public class Window extends JFrame /* implements Runnable */ {
 			break;
 		}
 
+	}
+
+	private static void stopAllServers() throws InterruptedException {
+		stopClientSend = true;
+		stopClientRecieve = true;
+		Thread.sleep(50);
+		stopSendServer = true;
+		stopRecieveServer = true;
+	}
+
+	private static void startAllServers() throws InterruptedException {
+		SendServerThread server1 = new SendServerThread(9090);
+		server1.start();
+		RecieveServerThread server2 = new RecieveServerThread(9091);
+		server2.start();
+		Thread.sleep(50);
+		SendClientThread client1 = new SendClientThread(9091);
+		client1.start();
+		RecieveClientThread client2 = new RecieveClientThread(9090);
+		client2.start();
 	}
 
 	/**
@@ -840,6 +866,7 @@ public class Window extends JFrame /* implements Runnable */ {
 		private static int sendPort;
 		private ServerSocket sendListener = null;
 		private static byte[] sendChannels;
+		private static byte[] temp = { 1, 2, 3, 4 };
 		private Socket sendSocket = null;
 
 		SendServerThread(int sendPort) {
@@ -856,7 +883,7 @@ public class Window extends JFrame /* implements Runnable */ {
 						com[addedComponents.get(i).finalControllerNumber][addedComponents.get(i).finalComponentNumber]
 								.getPollData() * 127));
 			}
-			System.out.println(sendChannels[0]);
+			// System.out.println(sendChannels[0]);
 			return sendChannels;
 		}
 
@@ -903,10 +930,11 @@ public class Window extends JFrame /* implements Runnable */ {
 			stopSendServer = false;
 			joystickSetup();
 			try {
+				sendListener = new ServerSocket(sendPort);
 				sendSocket = sendListener.accept();
 				ObjectOutputStream oos = new ObjectOutputStream(sendSocket.getOutputStream());
 				while (!stopSendServer) {
-					oos.writeObject(sendJoystickVals());
+					oos.writeObject(temp);
 					oos.flush();
 				}
 				sendListener.close();
@@ -915,17 +943,6 @@ public class Window extends JFrame /* implements Runnable */ {
 				e.printStackTrace();
 				System.out.println("Server Stopped Unexpectedly, or Client Closed the Application.");
 				stopSendServer = true;
-			} finally {
-				try {
-					if (!sendListener.isClosed())
-						sendListener.close();
-					if (!sendSocket.isClosed())
-						sendSocket.close();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-
 			}
 			System.out.println("Thread Finished");
 		}
@@ -954,10 +971,12 @@ public class Window extends JFrame /* implements Runnable */ {
 					System.out.println("Please use different ports for Send/Recieve!");
 					return;
 				}
+				recieveListener = new ServerSocket(recievePort);
 				recieveSocket = recieveListener.accept();
 				ObjectInputStream ois = new ObjectInputStream(recieveSocket.getInputStream());
 				while (!stopRecieveServer) {
 					recieveChannels = (byte[]) ois.readObject();
+					System.out.println(recieveChannels[recieveChannels.length - 1]);
 				}
 				recieveSocket.close();
 				recieveListener.close();
@@ -965,15 +984,6 @@ public class Window extends JFrame /* implements Runnable */ {
 			} catch (IOException | ClassNotFoundException e) {
 				e.printStackTrace();
 				System.out.println("Server Stopped Unexpectedly, or Client Closed the Application.");
-			} finally {
-				try {
-					if (!recieveListener.isClosed())
-						recieveListener.close();
-					if (!recieveSocket.isClosed())
-						recieveSocket.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
 			}
 		}
 
@@ -1015,26 +1025,59 @@ public class Window extends JFrame /* implements Runnable */ {
 
 	// TEMPORARY-----------------------------------------------
 
-	public static class SendClientServer extends Thread implements Serializable {
+	public static class SendClientThread extends Thread implements Serializable {
 		private static final long serialVersionUID = 1L;
 		private int sendPort;
 		private Socket sendSocket;
 		private ObjectOutputStream oos;
 
-		private byte[] send = {1,2,3,4,5};
-		private SendClientServer(int sendPort) {
+		private byte[] send = { 1, 2, 3, 4, 5 };
+
+		private SendClientThread(int sendPort) {
 			this.sendPort = sendPort;
 		}
 
 		public void run() {
-			try{
+			stopClientSend = false;
+			try {
 				sendSocket = new Socket(InetAddress.getLocalHost(), sendPort);
 				oos = new ObjectOutputStream(sendSocket.getOutputStream());
-				while(!stopClientSend){
+				while (!stopClientSend) {
 					oos.writeObject(send);
 					oos.flush();
 				}
-			}catch(IOException e){
+				oos.close();
+				sendSocket.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
+
+	public static class RecieveClientThread extends Thread implements Serializable {
+		private static final long serialVersionUID = 1L;
+		int recievePort;
+		Socket recieveSocket;
+		ObjectInputStream ois;
+		byte[] recievedByteArray;
+
+		RecieveClientThread(int recievePort) {
+			this.recievePort = recievePort;
+		}
+
+		public void run() {
+			stopClientRecieve = false;
+			try {
+				recieveSocket = new Socket(InetAddress.getLocalHost(), recievePort);
+				ois = new ObjectInputStream(recieveSocket.getInputStream());
+				while (!stopClientRecieve) {
+					recievedByteArray = (byte[]) ois.readObject();
+					System.out.println(recievedByteArray[recievedByteArray.length - 1]);
+				}
+				ois.close();
+				recieveSocket.close();
+			} catch (IOException | ClassNotFoundException e) {
 				e.printStackTrace();
 			}
 		}
